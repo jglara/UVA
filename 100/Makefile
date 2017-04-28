@@ -1,4 +1,4 @@
-CXXFLAGS =	-O0 -g -Wall -fmessage-length=0
+CXXFLAGS =	-O0 -g -Wall -fmessage-length=0 -std=c++11
 
 OBJS =		100.o
 

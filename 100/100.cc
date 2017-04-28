@@ -1,27 +1,27 @@
 #include <iostream>
 #include <algorithm>
+#include <unordered_map>
 
-unsigned int calcCycleLength_helper(unsigned int n, unsigned int length)
-{
-  if (n==1) return length;
-
-  if (n%2 == 1) {
-    // n is odd
-    return calcCycleLength_helper((3*n)+1,length+1);
-  } else {
-    // n is even
-    return calcCycleLength_helper((n/2), length+1);
-  }
-
-}
+std::unordered_map<unsigned int, unsigned int> lengths;
 
 unsigned int calcCycleLength(unsigned int n)
 {
-  return calcCycleLength_helper(n,1);
+  if (lengths[n]) return lengths[n];
+
+  if (n%2) {
+    lengths[n] = calcCycleLength((n*3)+1)+1;
+  } else {
+    lengths[n] = calcCycleLength(n/2)+1;
+  }
+
+  return lengths[n];
+
 }
 
 int main(void)
 {
+  lengths[1] = 1;
+  
   unsigned int I(0),J(0);
   while (std::cin >> I >> J) {
 
