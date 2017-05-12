@@ -1,9 +1,9 @@
-CXXFLAGS =	-O0 -g -Wall  -lm -lcrypt -O2 -std=c++11 -pipe -DONLINE_JUDGE
-OBJS =		462.o
+CXXFLAGS =	-O0 -g -Wall  -lm -lcrypt -std=c++11 -pipe -DONLINE_JUDGE
+OBJS =		10646.o
 
 LIBS =
 
-TARGET =	462
+TARGET =	10646
 
 $(TARGET):	$(OBJS)
 	$(CXX) -o $(TARGET) $(OBJS) $(LIBS)

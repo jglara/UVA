@@ -1,3 +1,4 @@
+#include <string.h>
 #include <iostream>
 #include <string>
 #include <sstream>
@@ -12,6 +13,8 @@ typedef struct
   char suit;
 } card_t;
 
+static const int CARDS=13;
+
 int main(void)
 {
   std::string hand;
@@ -23,60 +26,59 @@ int main(void)
     std::vector<card_t> cards;
 
     card_t card;
-    while (handstr) {
+    for (auto i=0;i<CARDS;i++) {
       handstr >> card.rank >> card.suit;
 
-      suits_counter[card.suit] ++;
-      cards.push_back(card);
+       ++suits_counter[card.suit];
+      if (strchr("AKQJ", card.rank)) {
+        cards.push_back(card);
+      }
 
     }
 
     // count points
-    unsigned int points1_4(0);
-    unsigned int points5_7(0);
+    unsigned int points_rank(0);
+    unsigned int points_suit(0);
 
     ////////////////////////////////////////
     // point ranks
     for (auto c : cards) {
 
+      switch (c.rank) {
+      case 'A':
       // #1
-      if ((c.rank == 'A')) {
-        points1_4 +=4;
-
+        points_rank +=4;
         suits_stop.insert(c.suit);
-      }
+        break;
 
+      case 'K':
       // #1 & #2
-      if ((c.rank == 'K')) {
         if (suits_counter[c.suit] == 1) {
-          points1_4+=2;
+          points_rank+=2;
         } else {
-           points1_4+=3;
-        }
-
-        // stop
-        if (suits_counter[c.suit] >= 2) {
+          points_rank+=3;
           suits_stop.insert(c.suit);
         }
-      }
+        break;
 
       // #1 #3
-      if ((c.rank == 'Q')) {
+      case 'Q':
         if (suits_counter[c.suit] <= 2) {
-          points1_4+=1;
+          points_rank+=1;
         } else {
-           points1_4+=2;
+           points_rank+=2;
+           suits_stop.insert(c.suit);
         }
-
-        // stop
-        if (suits_counter[c.suit] >= 3) {
-          suits_stop.insert(c.suit);
-        }
-      }
+        break;
 
       // #1 #4
-      if ((c.rank == 'J') and suits_counter[c.suit] <= 3) {
-        ++ points1_4;
+      case 'J':
+        if (suits_counter[c.suit] > 3) {
+          ++ points_rank;
+        }
+        break;
+      default:
+        ;
       }
     }
 
@@ -86,13 +88,13 @@ int main(void)
       // #5
       switch (s.second) {
       case 2:
-        points5_7 += 1;
+        points_suit += 1;
         break;
       case 1:
-        points5_7 += 2;
+        points_suit += 2;
         break;
       case 0:
-        points5_7 += 2;
+        points_suit += 2;
         break;
       default:
         ;
@@ -100,17 +102,18 @@ int main(void)
     }
 
     ////////////////////////////////////////////////////////////////////////////////
-    // Asses bif
+    // Assess bid
 
-    if (points1_4 + points5_7 < 14) {
+    if (points_rank + points_suit < 14) {
       std::cout << "PASS\n" ;
-    } else if ((points1_4 >= 16) and (suits_stop.size() == 4)) {
+    } else if ((points_rank >= 16) and (suits_stop.size() == 4)) {
       std::cout << "BID NO-TRUMP\n";
     } else {
       std::cout << "BID " << (std::max_element(suits_counter.rbegin(), suits_counter.rend(),
                                                [](const std::pair<char,unsigned int> &a,
                                                   const std::pair<char,unsigned int> &b) { return a.second < b.second; } ))->first
                 << '\n';
+
     }
   }
 
