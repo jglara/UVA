@@ -26,8 +26,9 @@ class Board:
                     self.setOcuppied(row,col)
                     self.pieces.append((row,col,d))
 
-    def __getitem__(self,i):
-        return self.pieces[i]
+    def getPiece(self):
+        for p in self.pieces:
+            yield p
 
     def isFree(self,row,col):
         return self.free[row][col]
@@ -45,70 +46,73 @@ class Board:
     def getFreeNonattacked(self):
         return self.free_or_nonattacked
 
-def validPosition(row, col, board):
-    if (row < 0) or (row >7):
-        return False
-    elif ((col < 0) or (col >7)):
-        return False
-    
-    return board.isFree(row,col)
+    def validPosition(self,row, col):
+        if (row < 0) or (row >7):
+            return False
+        elif ((col < 0) or (col >7)):
+            return False
+
+        return self.isFree(row,col)
 
 
-def PositionGenerator(board, row,col,deltaRow,deltaCol, times=-1):
-    while times != 0:
-        row = row + deltaRow
-        col = col + deltaCol
-        if validPosition(row, col, board):
-            times = times - 1
-            yield row, col
-        else:
-            return
+class BoardEngine:
+    mpGen = { 'P' : [(-1, -1, 1), (-1, 1, 1)],
+              'p' : [(1, -1, 1), (1, 1, 1)],
 
-def MultiplePositionGenerator(board, row, col, aList):
-    for l in aList:
-        (deltaRow, deltaCol, times) = l
-        pg = PositionGenerator(board,row,col,deltaRow,deltaCol,times)
-        for p in pg:
-            yield p 
-    
+              'N' : [(2, -1, 1), (2, 1, 1),
+                     (1, 2, 1), (-1, 2, 1),
+                     (-2, 1, 1), (-2, -1, 1),
+                     (1, -2, 1), (-1, -2, 1)],
 
-mpGen = { 'P' : [(-1, -1, 1), (-1, 1, 1)],
-          'p' : [(1, -1, 1), (1, 1, 1)],
-             
-            'N' : [(2, -1, 1), (2, 1, 1),
-                       (1, 2, 1), (-1, 2, 1),
-                       (-2, 1, 1), (-2, -1, 1),
-                       (1, -2, 1), (-1, -2, 1)],
-         
-            'B' : [(1, 1, -1), (-1, 1, -1), (1, -1, -1), (-1, -1, -1)],
-         
-            'R' : [(1, 0, -1), (-1, 0, -1), (0, 1, -1), (0, -1, -1)],
-         
-            'Q' : [(1, 1, -1), (-1, 1, -1), (1, -1, -1), (-1, -1, -1),
-                   (1, 0, -1), (-1, 0, -1), (0, 1, -1), (0, -1, -1)],
-         
-            'K' : [(1, 1, 1) , (1, 0, 1), (1, -1, 1),
-                   (0, 1, 1), (0, -1, 1),
-                   (-1, 1, 1), (-1, 0, 1), (-1, -1, 1)]
-         }
+              'B' : [(1, 1, -1), (-1, 1, -1), (1, -1, -1), (-1, -1, -1)],
 
-def computeAttacked(board):
-    
-    for (row,col,piece) in board:
-        if piece in mpGen:
-            mpg = MultiplePositionGenerator(board, row, col, mpGen[piece])
-        else:
-            mpg = MultiplePositionGenerator(board, row, col, mpGen[piece.upper()])
-        for (r,c) in mpg:
-            board.setAttacked(r,c)
-            
-    return board.getFreeNonattacked()
-        
+              'R' : [(1, 0, -1), (-1, 0, -1), (0, 1, -1), (0, -1, -1)],
+
+              'Q' : [(1, 1, -1), (-1, 1, -1), (1, -1, -1), (-1, -1, -1),
+                     (1, 0, -1), (-1, 0, -1), (0, 1, -1), (0, -1, -1)],
+
+              'K' : [(1, 1, 1) , (1, 0, 1), (1, -1, 1),
+                     (0, 1, 1), (0, -1, 1),
+                     (-1, 1, 1), (-1, 0, 1), (-1, -1, 1)]
+          }
+
+    def __init_(self):
+        pass
+
+    def PositionGenerator(self, board, row,col,deltaRow,deltaCol, times=-1):
+        while times != 0:
+            row = row + deltaRow
+            col = col + deltaCol
+            if board.validPosition(row, col):
+                times = times - 1
+                yield row, col
+            else:
+                return # stop as soon as we find a nonfree position
+
+    def MultiplePositionGenerator(self,board, row, col, aList):
+        for l in aList:
+            (deltaRow, deltaCol, times) = l
+            pg = self.PositionGenerator(board, row,col,deltaRow,deltaCol,times)
+            for p in pg:
+                yield p
+
+
+    def computeAttacked(self,board):
+        for (row,col,piece) in board.getPiece():
+            if piece in self.mpGen:
+                mpg = self.MultiplePositionGenerator(board, row, col, self.mpGen[piece])
+            else:
+                mpg = self.MultiplePositionGenerator(board, row, col, self.mpGen[piece.upper()])
+
+            for (r,c) in mpg:
+                board.setAttacked(r,c)
 
 from sys import stdin
 if __name__ == '__main__':
+    be = BoardEngine()
     for l in stdin.read().splitlines():
         #print l
         b = Board()
         b.read(l)
-        print (computeAttacked(b))
+        be.computeAttacked(b)
+        print(b.getFreeNonattacked())
