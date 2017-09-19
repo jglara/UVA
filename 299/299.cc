@@ -22,14 +22,10 @@ int main()
 
     unsigned int swaps(0);
     if (len>1) {
-      for(auto i=train.end()-1; i!=train.begin(); --i) {
-        for(auto j=train.begin(); j!=i; ++j) {
-
-          if (*j>*(j+1)) {
-            ++swaps;
-            swap(*j,*(j+1));
-          }
-        }
+      for(auto i=1U; i<=len; ++i) {
+        auto pos=find(train.begin(), train.end(), i);
+        swaps+=distance(train.begin(),pos);
+        train.erase(pos);
       }
     }
 
