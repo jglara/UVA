@@ -186,7 +186,7 @@ public:
                   [&i] (const std::pair<std::string, TeamClassification> &t1) {
                     std::cout << ++i << ") " << t1.first << " " << t1.second.toStr() << "\n" ;
                   });
-                  
+
   }
 
 };
