@@ -72,15 +72,86 @@ bool operator==(const Interval &a, const Interval &b)
 }
 
 ////////////////////////////////////////
+class PirateNode {
+public:
+  typedef enum {
+    NONE,
+    ZERO,
+    ONE,
+    NEGATE
+  } state_t;
+
+private:
+  state_t state_;
+  unsigned int value_;
+
+public:
+
+
+  PirateNode() :state_(NONE), value_(0) { }
+  PirateNode(unsigned int value) : state_(NONE), value_(value) { }
+  PirateNode(state_t s) : state_(s), value_(0) { }
+  PirateNode(const PirateNode &n) : state_(n.state_), value_(n.value_) { }
+
+  unsigned int value() const { return value_;}
+  unsigned int state() const { return state_;}
+  void resetState() { state_=NONE;}
+  unsigned int  setValue(unsigned int v) { value_ = v; state_ = NONE;  return value_;}
+
+
+  void combine(const PirateNode &op, unsigned int size) {
+    switch (op.state_) {
+    case NONE:
+      break;
+
+    case ZERO:
+      state_= ZERO;
+      value_ = 0;
+      break;
+
+    case ONE:
+      state_ = ONE;
+      value_ = size;
+      break;
+
+    case NEGATE:
+      switch (state_) {
+      case NONE:
+        state_ = NEGATE;
+        value_ = size - value_;
+        break;
+      case NEGATE:
+        state_ = NONE;
+        value_ = size - value_;
+        break;
+
+      case ONE:
+        state_ = ZERO;
+        value_ = 0;
+        break;
+
+      case ZERO:
+        state_ = ONE;
+        value_ = size;
+        break;
+
+      }
+      break;
+    }
+  }
+
+};
+
+////////////////////////////////////////
 class PirateMagic {
-  vector<unsigned int> ranges_;
+  vector<PirateNode> ranges_;
   unsigned int n_;
 
   unsigned int next_power(unsigned int n) {
     unsigned int k=1;
     while (k<n) {
       k *= 2;
-    } 
+    }
     return k;
   }
 
@@ -105,47 +176,48 @@ class PirateMagic {
   }
 
   ////////////////////
-  template <class RandomIt>
-  void compile(const RangeNode &n, RandomIt first, RandomIt last) {
-
-    unsigned int d=distance(first,last);
-    if (d == 0) {
-      ;
-    } else if (d == 1) {
-      ranges_[n.pos_] = *first;
-    } else {
-      // recurse
-      RangeNode rleft(n.left());
-      RangeNode rright(n.right());
-      compile(rleft, first, first+d/2);
-      compile(rright, first+d/2, last);
-
-      ranges_[n.pos_] = ranges_[rleft.pos_] + ranges_[rright.pos_];
-    }
-
-  }
-
-  ////////////////////
-  unsigned int query_helper(const RangeNode &n, const Interval &i) const {
+  unsigned int query_helper(const RangeNode &n, const Interval &i) {
     Interval i_n= i.intersect(n.interval_);
 
     if (i_n.size() == 0) {
       return 0;
     } else if (i_n == n.interval_) {
-      return ranges_[n.pos_];
+      return ranges_[n.pos_].value();
+
     } else {
-      return query_helper( n.left(), i_n) + query_helper( n.right(), i_n);
+
+      RangeNode rleft(n.left());
+      RangeNode rright(n.right());
+      Interval il(rleft.interval_.intersect(i));
+      Interval ir(rright.interval_.intersect(i));
+
+      // propagate op down
+      ranges_[rleft.pos_].combine(ranges_[n.pos_], rleft.interval_.size());
+      ranges_[rright.pos_].combine(ranges_[n.pos_], rright.interval_.size());
+      ranges_[n.pos_].resetState();
+
+      unsigned int retValue=0;
+      if (il.size()>0) {
+        retValue += query_helper(rleft, il);
+      }
+
+      if (ir.size()>0) {
+        retValue += query_helper(rright, ir );
+      }
+
+      return retValue;
     }
+
   }
 
   ////////////////////
-  template <class UnaryFunction>
-  void change_helper(const RangeNode &n, const Interval &i, UnaryFunction f) {
+  void change_helper(const RangeNode &n, const Interval &i, const PirateNode &op) {
+    Interval i_n= i.intersect(n.interval_);
 
-    if (n.interval_.size() == 1) {
-      //cout << "Ch: (" << static_cast<int>(ranges_[n.pos_]) << ")" << i_n.l() <<" <- " << f(ranges_[n.pos_]) << "\n"; 
-      ranges_[n.pos_] = f(ranges_[n.pos_]);
-
+    if (i_n.size() == 0) {
+      return;
+    } else if (i_n == n.interval_) {
+      ranges_[n.pos_].combine(op, i_n.size());
     } else {
       // recurse
       RangeNode rleft(n.left());
@@ -153,19 +225,40 @@ class PirateMagic {
       Interval il(rleft.interval_.intersect(i));
       Interval ir(rright.interval_.intersect(i));
 
+      // propagate op down
+      ranges_[rleft.pos_].combine(ranges_[n.pos_], rleft.interval_.size());
+      ranges_[rright.pos_].combine(ranges_[n.pos_], rright.interval_.size());
+      ranges_[n.pos_].resetState();
+
       if (il.size()>0) {
-        change_helper(rleft, il, f);
+        change_helper(rleft, il,  op);
       }
 
       if (ir.size()>0) {
-        change_helper(rright, ir, f);
+        change_helper(rright, ir, op );
       }
 
-      ranges_[n.pos_] = ranges_[rleft.pos_] + ranges_[rright.pos_];
+      ranges_[n.pos_].setValue( ranges_[rleft.pos_].value() + ranges_[rright.pos_].value() );
 
     }
   }
- 
+
+
+  void propagate(unsigned int rfirst, unsigned int n) {
+    unsigned int rlast =rfirst+n;
+    auto i=rfirst;
+    auto j=rfirst*2+1;
+    for (; i<rlast; i++,j+=2) {
+      ranges_[i] = ranges_[j].value() + ranges_[j+1].value();
+    }
+
+    if (rfirst == 0) {
+      return;
+    } else {
+      propagate(rfirst/2 + rfirst%2 -1, n/2 + n%2);
+    }
+
+  }
 
 public:
 
@@ -174,19 +267,26 @@ public:
     // copy(first, last, ostream_iterator<unsigned int>(cout, ""));cout << "\n";
 
     ranges_.clear();
-    n_= distance(first,last);
-    ranges_.resize(2*next_power(n_)-1);
+    n_ = next_power(distance(first,last)) ;
+    ranges_.resize((2*n_)-1);
 
-    compile(root(), first, last);
+    // copy values to the last level
+    copy(first, last, ranges_.begin()+(n_-1));
+
+    // propagate changes
+    propagate(n_/2 -1, n_/2);
+
+    // compile(root(), first, last);
   }
 
-  unsigned int query(const Interval &i) const {
+  unsigned int query(const Interval &i) {
     return query_helper(root(), i);
   };
 
-  template <class UnaryFunction>
-  void change(const Interval &i, UnaryFunction f) {
-    change_helper(root(), i, f);
+  void change(const Interval &i, const PirateNode &op) {
+
+    change_helper(root(), i, op);
+
   }
 
   friend istream &operator>>(istream &istr, PirateMagic &pm);
@@ -252,13 +352,13 @@ public:
 
     switch (cmd.type()) {
     case 'F':
-      pm.change(cmd.interval(), [] (unsigned char i) { return 1;});
+      pm.change(cmd.interval(), PirateNode(PirateNode::ONE));
       break;
     case 'E':
-      pm.change(cmd.interval(), [] (unsigned char i) { return 0;});
+      pm.change(cmd.interval(), PirateNode(PirateNode::ZERO));
       break;
     case 'I':
-      pm.change(cmd.interval(), [] (unsigned char i) { return (i+1)%2;});
+      pm.change(cmd.interval(), PirateNode(PirateNode::NEGATE));
       break;
     case 'S':
       query_++;
