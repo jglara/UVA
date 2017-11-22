@@ -25,6 +25,79 @@ blank.
 
 using namespace std;
 
+class ColoringState {
+  const vector< vector<int> > &graph_;
+
+  unordered_set<int> unpainted_;
+  unordered_set<int> blacks_;
+
+  unordered_set<int>::iterator nextNode_;
+
+  ColoringState(const ColoringState &state, int node) : graph_(state.graph_), unpainted_(state.unpainted_), blacks_(state.blacks_) {
+    unpainted_.erase(node);
+
+    blacks_.insert(node);
+
+    for_each(graph_[node].begin(), graph_[node].end(), [this] (int node) {unpainted_.erase(node);});
+
+    nextNode_ = unpainted_.begin();
+  }
+
+public:
+  ColoringState(const vector< vector<int> > &graph) : graph_(graph) {
+    for (int node=0; node< graph.size(); ++node) {
+      if (!graph[node].empty()) {
+        unpainted_.insert(node);
+      }
+    }
+    nextNode_ = unpainted_.begin();
+  }
+
+  ColoringState(const ColoringState &other) : graph_(other.graph_), unpainted_(other.unpainted_), blacks_(other.blacks_), nextNode_(unpainted_.begin()) { }
+  ColoringState &operator=(const ColoringState &other) {
+    if (this == &other) return *this;
+
+    unpainted_ = other.unpainted_;
+    blacks_ = other.blacks_;
+    nextNode_ = unpainted_.begin();
+
+    return *this;
+  }
+
+  bool nextState() const {
+    return (nextNode_ != unpainted_.end());
+  }
+
+  ColoringState getNextState() {
+    ColoringState nextState(*this, *nextNode_);
+    nextNode_++;
+
+    return nextState;
+  }
+
+  const unordered_set<int> &blacks() const { return blacks_;}
+
+
+
+};
+
+ColoringState backtrack(ColoringState state) {
+
+  if (!state.nextState()) {
+    return state;
+  }
+
+  ColoringState best(state);
+  while(state.nextState()) {
+    ColoringState next= backtrack(state.getNextState());
+    if (next.blacks().size() > best.blacks().size()) {
+      best = next;
+    }
+  }
+
+  return best;
+}
+
 const unsigned int MAX_NODES=100;
 int main()
 {
@@ -38,45 +111,23 @@ int main()
     cin >> n_nodes >> k_edges;
 
     vector< vector<int> >graph(MAX_NODES, vector<int>());
-    vector<int> nodes; nodes.reserve(n_nodes);
     for(;k_edges>0; --k_edges) {
       int from(0);
       int to(0);
 
       cin >> from >> to;
-      if (graph[from].empty()) {
-        nodes.push_back(from);
-      }
       graph[from].push_back(to);
-
-      if (graph[to].empty()) {
-        nodes.push_back(to);
-      }
       graph[to].push_back(from);
     }
 
-    // SORT nodes by descending number of adj. edges
-    sort(nodes.begin(), nodes.end(), [graph] (int node1, int node2) {
-        return (graph[node1].size() < graph[node2].size());
-      });
-
-    // take nodes one by one, adding to the black list, and adj. to the white list
-    vector<int> blacks;
-    unordered_set<int> whites;
-
-    for( auto node : nodes) {
-      if (whites.find(node) == whites.end()) {
-        blacks.push_back(node);
-        copy(graph[node].begin(), graph[node].end(), inserter(whites, whites.end()));
-      }
-    }
+    ColoringState initial(graph);
+    ColoringState maxCS=backtrack(initial);
 
     // print the solution
-    sort(blacks.begin(), blacks.end());
-    cout << blacks.size() << "\n";
-    if (!blacks.empty()) {
-      copy_n(blacks.begin(), blacks.size()-1, ostream_iterator<int>(cout, " "));
-      cout << blacks.back() << "\n";
+    cout << maxCS.blacks().size() << "\n";
+    if (!maxCS.blacks().empty()) {
+      copy(maxCS.blacks().begin(), maxCS.blacks().end(), ostream_iterator<int>(cout, " "));
+      cout << "\n";
     }
 
     // if (m_graphs>1) {
