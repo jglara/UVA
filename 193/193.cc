@@ -19,83 +19,55 @@ blank.
 
 #include <iostream>
 #include <vector>
-#include <unordered_set>
+#include <map>
 #include <algorithm>
 #include <iterator>
 
 using namespace std;
 
-class ColoringState {
-  const vector< vector<int> > &graph_;
 
-  unordered_set<int> unpainted_;
-  unordered_set<int> blacks_;
+void backtrack(vector< vector<int> > &graph, map<int,bool> &colors, unsigned int blacks, vector<int> &best, map<int,bool>::iterator it) {
 
-  unordered_set<int>::iterator nextNode_;
-
-  ColoringState(const ColoringState &state, int node) : graph_(state.graph_), unpainted_(state.unpainted_), blacks_(state.blacks_) {
-    unpainted_.erase(node);
-
-    blacks_.insert(node);
-
-    for_each(graph_[node].begin(), graph_[node].end(), [this] (int node) {unpainted_.erase(node);});
-
-    nextNode_ = unpainted_.begin();
-  }
-
-public:
-  ColoringState(const vector< vector<int> > &graph) : graph_(graph) {
-    for (int node=0; node< graph.size(); ++node) {
-      if (!graph[node].empty()) {
-        unpainted_.insert(node);
-      }
+  // cout << "node= " << it->first << ". blacks= " << blacks<< "\n";
+  if (it == colors.end()) {
+    // cout << "Finished.. backtracking\n";
+    if (blacks >= best.size()) {
+      best.clear();
+      for_each(colors.begin(), colors.end(), [&best] (const pair<int, bool> &k_v) {
+          if (k_v.second) {
+            best.push_back(k_v.first);
+          }
+        });
     }
-    nextNode_ = unpainted_.begin();
+
+    return;
   }
 
-  ColoringState(const ColoringState &other) : graph_(other.graph_), unpainted_(other.unpainted_), blacks_(other.blacks_), nextNode_(unpainted_.begin()) { }
-  ColoringState &operator=(const ColoringState &other) {
-    if (this == &other) return *this;
+  int node= it->first;
+  if (any_of(graph[node].begin(), graph[node].end(), [&colors] (int node) {
+        return colors[node];})) {
 
-    unpainted_ = other.unpainted_;
-    blacks_ = other.blacks_;
-    nextNode_ = unpainted_.begin();
+    // cout << "1. paint white " << node <<"\n";
+    // paint white and backtrack
+    colors[node] = false;
+    map<int,bool>::iterator next(it); next++;
+    backtrack(graph, colors, blacks, best, next);
+  } else {
 
-    return *this;
+    map<int,bool>::iterator next(it); next++;
+
+    // paint black
+    // cout << "2.1. paint black " << node <<"\n";
+    colors[node] = true;
+    backtrack(graph, colors, blacks+1, best, next);
+
+    // paint white
+    // cout << "2.2. paint white " << node <<"\n";
+    colors[node] = false;
+    backtrack(graph, colors, blacks, best, next);
+
   }
 
-  bool nextState() const {
-    return (nextNode_ != unpainted_.end());
-  }
-
-  ColoringState getNextState() {
-    ColoringState nextState(*this, *nextNode_);
-    nextNode_++;
-
-    return nextState;
-  }
-
-  const unordered_set<int> &blacks() const { return blacks_;}
-
-
-
-};
-
-ColoringState backtrack(ColoringState state) {
-
-  if (!state.nextState()) {
-    return state;
-  }
-
-  ColoringState best(state);
-  while(state.nextState()) {
-    ColoringState next= backtrack(state.getNextState());
-    if (next.blacks().size() > best.blacks().size()) {
-      best = next;
-    }
-  }
-
-  return best;
 }
 
 const unsigned int MAX_NODES=100;
@@ -110,7 +82,11 @@ int main()
     int k_edges(0);
     cin >> n_nodes >> k_edges;
 
-    vector< vector<int> >graph(MAX_NODES, vector<int>());
+    vector< vector<int> >graph(MAX_NODES+1, vector<int>());
+    map<int,bool> colors;
+    for(int i=1;i<=n_nodes;i++) {
+      colors[i] = false;
+    }
     for(;k_edges>0; --k_edges) {
       int from(0);
       int to(0);
@@ -120,14 +96,15 @@ int main()
       graph[to].push_back(from);
     }
 
-    ColoringState initial(graph);
-    ColoringState maxCS=backtrack(initial);
+    vector<int> blacks;
+    backtrack(graph, colors, 0, blacks, colors.begin());
 
     // print the solution
-    cout << maxCS.blacks().size() << "\n";
-    if (!maxCS.blacks().empty()) {
-      copy(maxCS.blacks().begin(), maxCS.blacks().end(), ostream_iterator<int>(cout, " "));
-      cout << "\n";
+    sort(blacks.begin(), blacks.end());
+    cout << blacks.size() << "\n";
+    if (!blacks.empty()) {
+      copy_n(blacks.begin(), blacks.size()-1, ostream_iterator<int>(cout, " "));
+      cout << blacks.back() << "\n";
     }
 
     // if (m_graphs>1) {
