@@ -36,29 +36,25 @@ public:
 
   template <class InputIt>
   void addSpecimens(InputIt first, unsigned int n) {
-    vector<unsigned int> specimens; specimens.reserve(n);
+    vector<unsigned int> specimens((chambers_.size() * 2) - n, 0);
     copy_n(first, n, back_inserter(specimens));
-    vector<unsigned int> sorted_specimens((chambers_.size() * 2) - n, 0);
-    copy(specimens.begin(), specimens.end(), back_inserter(sorted_specimens));
 
-    sort(sorted_specimens.begin(), sorted_specimens.end());
+    sort(specimens.begin(), specimens.end());
     double avgMass=accumulate(specimens.begin(), specimens.end(), 0.0) / chambers_.size();
     imbalance_=0;
 
-    int i(0);
+    auto it1(specimens.begin());
+    auto it2(prev(specimens.end()));
+
     for(auto &ch: chambers_) {
-      while (i <= specimens.size() and specimens[i] == 0) i++;
-      if (i >= specimens.size()) break;
-      ch.push_back(specimens[i]);
-      auto it =find(sorted_specimens.begin(), sorted_specimens.end(), specimens[i]);
-      auto pos = sorted_specimens.size() - distance(sorted_specimens.begin(), it) - 1;
-      if (sorted_specimens[pos] > 0) {
-        ch.push_back(sorted_specimens[pos]);
-        auto it1 = find(specimens.begin(), specimens.end(), sorted_specimens[pos]);
-        *it1=0;
+      auto val1=*it1++;
+      auto val2=*it2--;
+      if (val1>0) {
+        ch.push_back(val1);
       }
-      *it=0;
-      i++;
+      if (val2>0) {
+        ch.push_back(val2);
+      }
     }
 
     imbalance_ = accumulate(chambers_.begin(), chambers_.end(), 0.0, [avgMass] (double acum, const vector<unsigned int> &ch) {
