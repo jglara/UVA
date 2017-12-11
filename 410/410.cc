@@ -25,6 +25,7 @@ The final line of output for each set should be a blank line. (Follow the sample
 #include <vector>
 #include <algorithm>
 #include <iomanip>
+#include <numeric>
 
 using namespace std;
 
@@ -35,29 +36,34 @@ public:
 
   template <class InputIt>
   void addSpecimens(InputIt first, unsigned int n) {
-    vector<unsigned int> specimens((chambers_.size() * 2) - n, 0);
-
+    vector<unsigned int> specimens; specimens.reserve(n);
     copy_n(first, n, back_inserter(specimens));
+    vector<unsigned int> sorted_specimens((chambers_.size() * 2) - n, 0);
+    copy(specimens.begin(), specimens.end(), back_inserter(sorted_specimens));
 
-    sort(specimens.begin(), specimens.end());
-
-    auto it1(specimens.begin());
-    auto it2(prev(specimens.end()));
-
+    sort(sorted_specimens.begin(), sorted_specimens.end());
     double avgMass=accumulate(specimens.begin(), specimens.end(), 0.0) / chambers_.size();
     imbalance_=0;
+
+    int i(0);
     for(auto &ch: chambers_) {
-      auto val1=*it1++;
-      auto val2=*it2--;
-      if (val1>0) {
-        ch.push_back(val1);
+      while (i <= specimens.size() and specimens[i] == 0) i++;
+      if (i >= specimens.size()) break;
+      ch.push_back(specimens[i]);
+      auto it =find(sorted_specimens.begin(), sorted_specimens.end(), specimens[i]);
+      auto pos = sorted_specimens.size() - distance(sorted_specimens.begin(), it) - 1;
+      if (sorted_specimens[pos] > 0) {
+        ch.push_back(sorted_specimens[pos]);
+        auto it1 = find(specimens.begin(), specimens.end(), sorted_specimens[pos]);
+        *it1=0;
       }
-      if (val2>0) {
-        ch.push_back(val2);
-      }
-      imbalance_ += abs((val1+val2) - avgMass);
+      *it=0;
+      i++;
     }
 
+    imbalance_ = accumulate(chambers_.begin(), chambers_.end(), 0.0, [avgMass] (double acum, const vector<unsigned int> &ch) {
+        return acum + abs(accumulate(ch.begin(), ch.end(), 0) - avgMass);
+      });
 
   }
 
@@ -102,12 +108,18 @@ ostream &operator<<(ostream &ostr, const InputSet &is)
 {
   unsigned int n(0);
   for (const auto &ch: is.chambers_) {
-    ostr << " " << n++ << ": ";
-    copy(ch.begin(), prev(ch.end()), ostream_iterator<unsigned int>(ostr, " "));
-    ostr << ch.back() << "\n";
+    ostr << " " << n++ << ":";
+    if (ch.size() > 0) {
+      ostr << " ";
+      copy(ch.begin(), prev(ch.end()), ostream_iterator<unsigned int>(ostr, " "));
+      if (ch.size()>0) {
+        ostr << ch.back();
+      }
+    }
+    ostr << "\n";
   }
 
-  ostr << "IMBALANCE = " << fixed << setprecision(6) << is.imbalance() << "\n";
+  ostr << "IMBALANCE = " << fixed << setprecision(5) << is.imbalance() << "\n";
 
   return ostr;
 }
@@ -116,14 +128,14 @@ int main()
 {
 
   InputSet is;
-  uint16_t n(0);
+  uint16_t n(1);
   while (cin >> is) {
-    if (n>0) {
-      cout << "\n";
-    }
+    // if (n>1) {
+    //   cout << "\n";
+    // }
 
     cout << "Set #" << n++ << "\n";
-    cout << is;
+    cout << is << "\n";
   }
 
 }
