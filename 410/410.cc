@@ -1,0 +1,129 @@
+/*
+  Input
+Input to this program will be a file with multiple sets of input. The first line of each set will contain
+two numbers. The first number (1 ≤ C ≤ 5) defines the number of chambers in the centrifuge and the
+second number (1 ≤ S ≤ 2C) defines the number of specimens in the input set. The second line of
+input will contain S integers representing the masses of the specimens in the set. Each specimen mass
+will be between 1 and 1000 and will be delimited by the beginning or end of the line and/or one or
+more blanks.
+
+Output
+For each input set, you are to print a line specifying the set number (starting with 1) in the format
+‘Set #X’ where X is the set number.
+The next C lines will contain the chamber number in column 1, a colon in column number 2, and
+then the masses of the specimens your program has assigned to that chamber starting in column 4.
+The masses in your output should be separated by exactly one blank.
+Your program should then print ‘IMBALANCE = X’ on a line by itself where X is the computed
+imbalance of your specimen assignments printed to 5 digits of precision to the right of the decimal.
+The final line of output for each set should be a blank line. (Follow the sample output format.)
+
+*/
+
+#include <iostream>
+#include <cstdint>
+#include <iterator>
+#include <vector>
+#include <algorithm>
+#include <iomanip>
+
+using namespace std;
+
+class InputSet {
+public:
+  InputSet(unsigned int nchambers=0) : chambers_( nchambers, vector<unsigned int>() )  {
+  }
+
+  template <class InputIt>
+  void addSpecimens(InputIt first, unsigned int n) {
+    vector<unsigned int> specimens((chambers_.size() * 2) - n, 0);
+
+    copy_n(first, n, back_inserter(specimens));
+
+    sort(specimens.begin(), specimens.end());
+
+    auto it1(specimens.begin());
+    auto it2(prev(specimens.end()));
+
+    double avgMass=accumulate(specimens.begin(), specimens.end(), 0.0) / chambers_.size();
+    imbalance_=0;
+    for(auto &ch: chambers_) {
+      auto val1=*it1++;
+      auto val2=*it2--;
+      if (val1>0) {
+        ch.push_back(val1);
+      }
+      if (val2>0) {
+        ch.push_back(val2);
+      }
+      imbalance_ += abs((val1+val2) - avgMass);
+    }
+
+
+  }
+
+  double imbalance() const {
+    return imbalance_;
+  };
+
+  typedef vector< vector<unsigned int> >::iterator chamber_iterator;
+  typedef vector< vector<unsigned int> >::const_iterator const_chamber_iterator;
+
+  chamber_iterator chamber_begin() { return chambers_.begin(); }
+  chamber_iterator chamber_end() { return chambers_.end(); }
+
+  const_chamber_iterator chamber_cbegin() { return chambers_.cbegin(); }
+  const_chamber_iterator chamber_cend() { return chambers_.cend(); }
+
+  friend istream &operator>>(istream &istr, InputSet &is);
+  friend ostream &operator<<(ostream &ostr, const InputSet &is);
+
+private:
+  vector< vector<unsigned int> > chambers_;
+  double imbalance_=0.0;
+
+};
+
+
+////////////////////////////////////////
+istream &operator>>(istream &istr, InputSet &is)
+{
+  is.chambers_.clear();
+  unsigned int nchambers(0), nspecimens(0);
+  istr >> nchambers >> nspecimens;
+
+  is.chambers_.resize(nchambers);
+  is.addSpecimens(istream_iterator<unsigned int>(istr), nspecimens);
+
+  return istr;
+}
+
+////////////////////////////////////////
+ostream &operator<<(ostream &ostr, const InputSet &is)
+{
+  unsigned int n(0);
+  for (const auto &ch: is.chambers_) {
+    ostr << " " << n++ << ": ";
+    copy(ch.begin(), prev(ch.end()), ostream_iterator<unsigned int>(ostr, " "));
+    ostr << ch.back() << "\n";
+  }
+
+  ostr << "IMBALANCE = " << fixed << setprecision(6) << is.imbalance() << "\n";
+
+  return ostr;
+}
+
+int main()
+{
+
+  InputSet is;
+  uint16_t n(0);
+  while (cin >> is) {
+    if (n>0) {
+      cout << "\n";
+    }
+
+    cout << "Set #" << n++ << "\n";
+    cout << is;
+  }
+
+}
