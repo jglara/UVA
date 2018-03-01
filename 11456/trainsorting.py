@@ -23,34 +23,81 @@ Sample Input
 """
 
 from sys import stdin,stdout
-from bisect import bisect_left
+from bisect import bisect_left, bisect_right
+
+class LIS:
+    def __init__(self):
+        self.q = []
+        self.lis = []
+
+    def add(self, w):
+        if (len(self.q) == 0):
+            self.q.append(w)
+            self.lis.append(len(self.q))
+        elif self.q[-1] < w:
+            # Extend wagond queue
+            self.q.append(w)
+            self.lis.append(len(self.q))
+        else:
+            # find the wagon position
+            pos = bisect_left(self.q, w)
+            self.q[pos] = w
+            self.lis.append(pos+1)
+
+    def lis_i(self,i):
+        return self.lis[i]
+
+class LDS:
+    def __init__(self):
+        self.q = []
+        self.lds = []
+
+    def add(self, w):
+        if len(self.q) == 0:
+            self.q.append(w)
+            self.lds.append(len(self.q))
+        elif self.q[0] > w:
+            # Extend wagon queue
+            self.q.insert(0,w)
+            self.lds.append(len(self.q))
+        else:
+            # find the wagon position
+            pos = bisect_left(self.q, w)
+            self.q[pos-1] = w
+            self.lds.append(len(self.q) - (pos-1))
+
+    def lds_i(self,i):
+        return self.lds[i]
+
 
 class ErinTrain:
 
     def __init__(self):
-        self.ql = []
-        self.qr = []
+        self.lis = LIS()
+        self.lds = LDS()
+        self.ws= []
 
-    def _add(q, weight):
-        if (len(q) == 0):
-            q.append(weight)
-        if (q[-1] < weight):
-            # Increase train length (right)
-            q.append(weight)
-        elif (weight < q[0]):
-            # increase train length (left)
-            q.insert(0, weight)
-        else:
-            # find the wagon position
-            pos = bisect_left(q,weight)
-            q[pos] = weight
-
-    def add(self,weight):
-        ErinTrain._add(self.qr,weight)
-        ErinTrain._add(self.ql,-weight)
+    def add(self, w):
+        self.ws.append(w)
 
     def longestTrain(self):
-        return max(len(self.qr), len(self.ql))
+        for w in reversed(self.ws):
+            self.lds.add(w)
+            self.lis.add(w)
+
+        ret = 0
+        # compute the max
+        for i in range(0,len(self.ws)):
+            # LIS from i to end
+            lis_i = self.lis.lis_i(i)
+            # LDS from i to end
+            lds_i = self.lds.lds_i(i)
+
+            if (lis_i + lds_i - 1) > ret:
+                ret = lis_i + lds_i - 1
+
+        return ret
+
 
 if __name__ == "__main__":
     # read number of tests
