@@ -11,6 +11,11 @@ unordered_map<char, int>precedence{
   {'*',2},
   {'/',2}};
 
+int foo()
+{
+  return 1;
+}
+
 int main()
 {
 
