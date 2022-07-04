@@ -35,6 +35,8 @@ int main(void)
 
     std::cout << I << " " << J << " " << max << '\n';
 
+    std
+
   }
 
 }
